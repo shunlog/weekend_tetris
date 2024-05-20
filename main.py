@@ -95,36 +95,50 @@ shapes = {
 }
 
 
-def draw_shape(sf, sh_name, pos, rot=0):
-    sh = shapes[sh_name]
-    match rot % 4:
-        case 1:
-            sh = rot_cw(sh)
-        case 2:
-            sh = rot_cw(rot_cw(sh))
-        case 3:
-            sh = rot_ccw(sh)
+class Block:
+    def __init__(self, sh_name, pos, rot=0):
+        self.sh_name = sh_name
+        self.pos = pos
+        self.rot = rot
 
-    for y, l in enumerate(sh):
-        for x, c in enumerate(l):
-            if not c:
-                continue
-            xp = (pos.x + x) * SQW
-            yp = (pos.y + y) * SQW
-            pygame.draw.rect(sf, colors[sh_name], ((xp, yp), (SQW, SQW)))
+
+    def draw(self, sf):
+        sh = shapes[self.sh_name]
+        match self.rot % 4:
+            case 1:
+                sh = rot_cw(sh)
+            case 2:
+                sh = rot_cw(rot_cw(sh))
+            case 3:
+                sh = rot_ccw(sh)
+
+        for y, l in enumerate(sh):
+            for x, c in enumerate(l):
+                if not c:
+                    continue
+                xp = (self.pos.x + x) * SQW
+                yp = (self.pos.y + y) * SQW
+                pygame.draw.rect(sf, colors[self.sh_name], ((xp, yp), (SQW, SQW)))
+
+def draw_board(blocks):
+    board = pygame.Surface((BOARD_W * SQW, BOARD_H * SQW))
+    for b in blocks:
+        b.draw(board)
+    return board
 
 
 def draw_frame(s):
     screen.fill("gray")
 
-    board = pygame.Surface((BOARD_W * SQW, BOARD_H * SQW))
-
-    pygame.draw.rect(screen, "red", (s.player_pos, (SQW, SQW)))
+    blocks = []
     for i, shape in enumerate(shapes.keys()):
         r = pygame.time.get_ticks() // 1000
-        draw_shape(board, shape, pygame.Vector2(5 * i, 1), r)
-
+        b = Block(shape, pygame.Vector2(5 * i, 1), r)
+        blocks.append(b)
+    board = draw_board(blocks)
     screen.blit(board, (100, 100))
+
+    pygame.draw.rect(screen, "red", (s.player_pos, (SQW, SQW)))
     pygame.display.flip()
 
 
