@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # Example file showing a circle moving on screen
 import pygame
+from icecream import ic
+
+SQW = 20
+BOARD_W = 50
+BOARD_H = 15
 
 pygame.init()
 screen = pygame.display.set_mode((1280, 720))
@@ -42,9 +47,74 @@ def handle_input(s):
                     pass
 
 
+def rot_cw(m):
+    return list(zip(*m))[::-1]
+
+def rot_ccw(m):
+    return list(zip(*m[::-1]))
+
+
+shapes = {
+    'L': ((0, 1, 0),
+          (0, 1, 0),
+          (0, 1, 1)),
+
+    'J': ((0, 1, 0),
+          (0, 1, 0),
+          (1, 1, 0)),
+
+    'T': ((0, 1, 0),
+          (1, 1, 1),
+          (0, 0, 0)),
+
+    'S': ((0, 0, 0),
+          (0, 1, 1),
+          (1, 1, 0)),
+
+    'Z': ((0, 0, 0),
+          (1, 1, 0),
+          (0, 1, 1)),
+
+    'SQ': ((1, 1),
+           (1, 1)),
+
+    'I': ((0, 1, 0, 0),
+          (0, 1, 0, 0),
+          (0, 1, 0, 0),
+          (0, 1, 0, 0))
+}
+
+
+def draw_shape(sf, sh_name, pos, rot=0):
+    sh = shapes[sh_name]
+    match rot % 4:
+        case 1:
+            sh = rot_cw(sh)
+        case 2:
+            sh = rot_cw(rot_cw(sh))
+        case 3:
+            sh = rot_ccw(sh)
+
+    for y, l in enumerate(sh):
+        for x, c in enumerate(l):
+            if not c:
+                continue
+            xp = (pos.x + x) * SQW
+            yp = (pos.y + y) * SQW
+            pygame.draw.rect(sf, "red", ((xp, yp), (SQW, SQW)))
+
+
 def draw_frame(s):
     screen.fill("gray")
-    pygame.draw.circle(screen, "red", s.player_pos, 40)
+
+    board = pygame.Surface((BOARD_W * SQW, BOARD_H * SQW))
+
+    pygame.draw.rect(screen, "red", (s.player_pos, (SQW, SQW)))
+    for i, shape in enumerate(shapes.keys()):
+        r = pygame.time.get_ticks() // 1000
+        draw_shape(board, shape, pygame.Vector2(5 * i, 1), r)
+
+    screen.blit(board, (100, 100))
     pygame.display.flip()
 
 
