@@ -54,6 +54,16 @@ def rot_ccw(m):
     return list(zip(*m[::-1]))
 
 
+colors = {
+    'L': "orange",
+    'J': "blue",
+    'T': "purple",
+    'S': "green",
+    'Z':  "red",
+    'SQ': "yellow",
+    'I': "cyan"
+}
+
 shapes = {
     'L': ((0, 1, 0),
           (0, 1, 0),
@@ -101,7 +111,7 @@ def draw_shape(sf, sh_name, pos, rot=0):
                 continue
             xp = (pos.x + x) * SQW
             yp = (pos.y + y) * SQW
-            pygame.draw.rect(sf, "red", ((xp, yp), (SQW, SQW)))
+            pygame.draw.rect(sf, colors[sh_name], ((xp, yp), (SQW, SQW)))
 
 
 def draw_frame(s):
