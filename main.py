@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # Example file showing a circle moving on screen
 import pygame
+import random
 from icecream import ic
 
 SQW = 20
-BOARD_W = 50
-BOARD_H = 15
+BOARD_WN = 10
+BOARD_HN = 20
+BOARD_W = BOARD_WN * SQW
+BOARD_H = BOARD_HN * SQW
+GRID_COLOR = pygame.Color(50, 50, 50)
+DROP_MS = 200
 
 pygame.init()
 screen = pygame.display.set_mode((1280, 720))
@@ -13,15 +18,6 @@ screen = pygame.display.set_mode((1280, 720))
 clock = pygame.time.Clock()
 dt = 0
 
-
-class State:
-    def __init__(self):
-        self.player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
-        self.dropping = False
-        self.mov_right = False
-        self.mov_left = False
-        self.last_dir_r = False   # last dir was right
-        self.running = True
 
 
 
@@ -94,6 +90,17 @@ shapes = {
           (0, 1, 0, 0))
 }
 
+# position = top-left corner
+shape_start_pos = {
+    'L': pygame.Vector2(3, -3),
+    'J': pygame.Vector2(4, -3),
+    'T': pygame.Vector2(4, -2),
+    'S': pygame.Vector2(4, -3),
+    'Z': pygame.Vector2(4, -3),
+    'SQ': pygame.Vector2(4, -2),
+    'I': pygame.Vector2(4, -4)
+}
+
 
 class Block:
     def __init__(self, sh_name, pos, rot=0):
@@ -120,40 +127,56 @@ class Block:
                 yp = (self.pos.y + y) * SQW
                 pygame.draw.rect(sf, colors[self.sh_name], ((xp, yp), (SQW, SQW)))
 
-def draw_board(blocks):
-    board = pygame.Surface((BOARD_W * SQW, BOARD_H * SQW))
-    for b in blocks:
+
+class State:
+    def __init__(self):
+        self.running = True
+
+        self.prev_drop_t = 0
+        self.dropping = False
+        self.mov_right = False
+        self.mov_left = False
+        self.last_dir_r = False   # last dir was right
+        self.blocks = []
+        sh_name = random.choice(list(shapes.keys()))
+        self.blck = Block(sh_name, shape_start_pos[sh_name])
+
+
+def draw_board(s):
+    board = pygame.Surface((BOARD_WN * SQW, BOARD_HN * SQW))
+    for i in range(BOARD_WN):
+        x = i * SQW
+        pygame.draw.aaline(board, GRID_COLOR, (x, 0), (x, BOARD_H))
+    for j in range(BOARD_HN):
+        y = j * SQW
+        pygame.draw.aaline(board, GRID_COLOR, (0, y), (BOARD_W, y))
+    for b in s.blocks:
         b.draw(board)
+    s.blck.draw(board)
+
     return board
 
 
 def draw_frame(s):
     screen.fill("gray")
 
-    blocks = []
-    for i, shape in enumerate(shapes.keys()):
-        r = pygame.time.get_ticks() // 1000
-        b = Block(shape, pygame.Vector2(5 * i, 1), r)
-        blocks.append(b)
-    board = draw_board(blocks)
+    board = draw_board(s)
     screen.blit(board, (100, 100))
 
-    pygame.draw.rect(screen, "red", (s.player_pos, (SQW, SQW)))
     pygame.display.flip()
 
 
 def update(s):
-    if keys[pygame.K_UP]:
-        s.player_pos.y -= 300 * dt
-    if keys[pygame.K_DOWN]:
-        s.player_pos.y += 300 * dt
-    if s.mov_right and (s.last_dir_r or (not s.mov_left)):
-        s.player_pos.x += 300 * dt
-    if s.mov_left and ((not s.last_dir_r) or (not s.mov_right)):
-        s.player_pos.x -= 300 * dt
+    t = pygame.time.get_ticks()
+    diff = t - s.prev_drop_t
+    if diff > DROP_MS:
+        s.blck.pos += pygame.Vector2(0, 1)
+        s.prev_drop_t = s.prev_drop_t + DROP_MS
+
 
 
 s = State()
+
 while s.running:
     keys = pygame.key.get_pressed()
     # TODO make these functions pure?
