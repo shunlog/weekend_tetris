@@ -10,8 +10,8 @@ BOARD_HN = 20
 BOARD_W = BOARD_WN * SQW
 BOARD_H = BOARD_HN * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
-DROP_MS = 200
-SIDE_MS = 100
+DROP_MS = 300
+SIDE_MS = 200
 
 pygame.init()
 screen = pygame.display.set_mode((1280, 720))
@@ -79,12 +79,20 @@ shape_start_pos = {
 }
 
 
+def delay(prev_t, t_delay):
+    '''Return (new prev time, iteration_passed?)'''
+    t = pygame.time.get_ticks()
+    diff = t - prev_t
+    if diff < t_delay:
+        return prev_t, False
+    return prev_t + t_delay, True
+
+
 class Block:
     def __init__(self, sh_name, pos, rot=0):
         self.sh_name = sh_name
         self.pos = pos
         self.rot = rot
-
 
 
     def draw(self, sf):
@@ -127,11 +135,21 @@ class State:
             return -1
         return 0
 
-    def move_down(self):
-        self.blck.pos += pygame.Vector2(0, 1)
+    def fall(self):
+        s.prev_drop_t, passed = delay(s.prev_drop_t, DROP_MS)
+        if passed:
+            self.blck.pos += pygame.Vector2(0, 1)
+
+    def continue_side(self):
+        s.prev_side_t, passed = delay(s.prev_side_t, SIDE_MS)
+        if passed:
+            self._move_side()
 
     def move_side(self):
         s.prev_side_t = pygame.time.get_ticks()
+        self._move_side()
+
+    def _move_side(self):
         self.blck.pos += (s.direction(), 0)
 
 
@@ -183,19 +201,9 @@ def handle_input(s):
                     pass
 
 
-def delay(prev_t, t_delay, f):
-    t = pygame.time.get_ticks()
-    diff = t - prev_t
-    if diff < t_delay:
-        return s.prev_drop_t
-    f()
-    return s.prev_drop_t + DROP_MS
-
-
 def update(s):
-
-    s.prev_drop_t = delay(s.prev_drop_t, DROP_MS, lambda: s.move_down())
-    delay(s.prev_side_t, SIDE_MS, lambda: s.move_side())
+    s.fall()
+    s.continue_side()
 
 
 s = State()
