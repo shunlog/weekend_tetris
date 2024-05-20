@@ -11,36 +11,13 @@ BOARD_W = BOARD_WN * SQW
 BOARD_H = BOARD_HN * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
 DROP_MS = 200
+SIDE_MS = 100
 
 pygame.init()
 screen = pygame.display.set_mode((1280, 720))
 
 clock = pygame.time.Clock()
 dt = 0
-
-
-
-
-def handle_input(s):
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            s.running = False
-        elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
-            match event.key:
-                case pygame.K_RIGHT:
-                    if event.type == pygame.KEYDOWN:
-                        s.mov_right = True
-                        s.last_dir_r = True
-                    else:
-                        s.mov_right = False
-                case pygame.K_LEFT:
-                    if event.type == pygame.KEYDOWN:
-                        s.mov_left = True
-                        s.last_dir_r = False
-                    else:
-                        s.mov_left = False
-                case pygame.K_DOWN:
-                    pass
 
 
 def rot_cw(m):
@@ -109,6 +86,7 @@ class Block:
         self.rot = rot
 
 
+
     def draw(self, sf):
         sh = shapes[self.sh_name]
         match self.rot % 4:
@@ -133,13 +111,28 @@ class State:
         self.running = True
 
         self.prev_drop_t = 0
+        self.prev_side_t = 0
         self.dropping = False
-        self.mov_right = False
-        self.mov_left = False
-        self.last_dir_r = False   # last dir was right
+        self.mov_right = False  # Right arrow pressed
+        self.mov_left = False  # Left arrow pressed
+        self.last_dir_r = False   # Check what direction was pressed last
         self.blocks = []
         sh_name = random.choice(list(shapes.keys()))
         self.blck = Block(sh_name, shape_start_pos[sh_name])
+
+    def direction(self):
+        if self.mov_right and (self.last_dir_r or (not self.mov_left)):
+            return 1
+        if self.mov_left and (not self.last_dir_r or (not self.mov_right)):
+            return -1
+        return 0
+
+    def move_down(self):
+        self.blck.pos += pygame.Vector2(0, 1)
+
+    def move_side(self):
+        s.prev_side_t = pygame.time.get_ticks()
+        self.blck.pos += (s.direction(), 0)
 
 
 def draw_board(s):
@@ -166,13 +159,43 @@ def draw_frame(s):
     pygame.display.flip()
 
 
-def update(s):
-    t = pygame.time.get_ticks()
-    diff = t - s.prev_drop_t
-    if diff > DROP_MS:
-        s.blck.pos += pygame.Vector2(0, 1)
-        s.prev_drop_t = s.prev_drop_t + DROP_MS
+def handle_input(s):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            s.running = False
+        elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
+            match event.key:
+                case pygame.K_RIGHT:
+                    if event.type == pygame.KEYDOWN:
+                        s.mov_right = True
+                        s.last_dir_r = True
+                        s.move_side()
+                    else:
+                        s.mov_right = False
+                case pygame.K_LEFT:
+                    if event.type == pygame.KEYDOWN:
+                        s.mov_left = True
+                        s.last_dir_r = False
+                        s.move_side()
+                    else:
+                        s.mov_left = False
+                case pygame.K_DOWN:
+                    pass
 
+
+def delay(prev_t, t_delay, f):
+    t = pygame.time.get_ticks()
+    diff = t - prev_t
+    if diff < t_delay:
+        return s.prev_drop_t
+    f()
+    return s.prev_drop_t + DROP_MS
+
+
+def update(s):
+
+    s.prev_drop_t = delay(s.prev_drop_t, DROP_MS, lambda: s.move_down())
+    delay(s.prev_side_t, SIDE_MS, lambda: s.move_side())
 
 
 s = State()
