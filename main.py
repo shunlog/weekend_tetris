@@ -8,56 +8,64 @@ screen = pygame.display.set_mode((1280, 720))
 clock = pygame.time.Clock()
 dt = 0
 
-player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
 
-# state
-dropping = False
-mov_right = False
-mov_left = False
-last_dir_r = False   # last dir was right
+class State:
+    def __init__(self):
+        self.player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
+        self.dropping = False
+        self.mov_right = False
+        self.mov_left = False
+        self.last_dir_r = False   # last dir was right
+        self.running = True
 
 
-running = True
-while running:
-    keys = pygame.key.get_pressed()
 
+def handle_input(s):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            s.running = False
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             match event.key:
                 case pygame.K_RIGHT:
                     if event.type == pygame.KEYDOWN:
-                        mov_right = True
-                        last_dir_r = True
+                        s.mov_right = True
+                        s.last_dir_r = True
                     else:
-                        mov_right = False
+                        s.mov_right = False
                 case pygame.K_LEFT:
                     if event.type == pygame.KEYDOWN:
-                        mov_left = True
-                        last_dir_r = False
+                        s.mov_left = True
+                        s.last_dir_r = False
                     else:
-                        mov_left = False
+                        s.mov_left = False
                 case pygame.K_DOWN:
                     pass
 
 
-    # fill the screen with a color to wipe away anything from last frame
+def draw_frame(s):
     screen.fill("gray")
-
-    pygame.draw.circle(screen, "red", player_pos, 40)
-
-    if keys[pygame.K_UP]:
-        player_pos.y -= 300 * dt
-    if keys[pygame.K_DOWN]:
-        player_pos.y += 300 * dt
-    if mov_right and (last_dir_r or (not mov_left)):
-        player_pos.x += 300 * dt
-    if mov_left and ((not last_dir_r) or (not mov_right)):
-        player_pos.x -= 300 * dt
-
-    # flip() the display to put your work on screen
+    pygame.draw.circle(screen, "red", s.player_pos, 40)
     pygame.display.flip()
+
+
+def update(s):
+    if keys[pygame.K_UP]:
+        s.player_pos.y -= 300 * dt
+    if keys[pygame.K_DOWN]:
+        s.player_pos.y += 300 * dt
+    if s.mov_right and (s.last_dir_r or (not s.mov_left)):
+        s.player_pos.x += 300 * dt
+    if s.mov_left and ((not s.last_dir_r) or (not s.mov_right)):
+        s.player_pos.x -= 300 * dt
+
+
+s = State()
+while s.running:
+    keys = pygame.key.get_pressed()
+    # TODO make these functions pure?
+    handle_input(s)
+    update(s)
+    draw_frame(s)
 
     # limits FPS to 60
     # dt is delta time in seconds since last frame, used for framerate-
