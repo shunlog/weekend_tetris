@@ -140,6 +140,12 @@ class Block:
         for sq in self.squares():
             sq.draw_on(sf)
 
+    def rotate_cw(self):
+        self.rot = (self.rot + 1) % 4
+
+    def rotate_ccw(self):
+        self.rot = (self.rot - 1) % 4
+
 
 class State:
     def __init__(self):
@@ -229,6 +235,10 @@ class State:
         while not self.move_down():
             pass
 
+    def rotate_cw(self):
+        self.blck.rotate_cw()
+        if self.block_overlapping():
+            self.blck.rotate_ccw()
 
 
 def draw_board(s):
@@ -264,9 +274,12 @@ def handle_input(s):
             s.running = False
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             match event.key:
-                case pygame.K_SPACE:
-                    if event.type == pygame.KEYDOWN:
-                        s.drop()
+                case pygame.K_y if event.type == pygame.KEYDOWN:
+                    s.rotate_ccw()
+                case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
+                    s.rotate_cw()
+                case pygame.K_SPACE if event.type == pygame.KEYDOWN:
+                    s.drop()
                 case pygame.K_RIGHT:
                     s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
