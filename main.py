@@ -212,7 +212,7 @@ class State:
 
         self.blck.pos += Coord(0, 1)
 
-    def autorepeat(self):
+    def handle_DAS(self):
         t = pygame.time.get_ticks()
         if t - self.last_mov_t < DAS or self.direction() == 0:
             return
@@ -302,7 +302,7 @@ def handle_input(s):
 
 def update(s):
     s.fall()
-    s.autorepeat()
+    s.handle_DAS()
 
 
 s = State()
