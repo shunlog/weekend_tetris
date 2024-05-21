@@ -37,12 +37,6 @@ class Coord:
     def __sub__(self, other):
         return Coord(self.x - other.x, self.y - other.y)
 
-def rot_cw(m):
-    return list(zip(*m))[::-1]
-
-def rot_ccw(m):
-    return list(zip(*m[::-1]))
-
 
 colors = {
     'L': "orange",
@@ -94,6 +88,10 @@ def matrix_to_set(m):
     return s
 
 
+def rot_cw(m):
+    return list(zip(*m))[::-1]
+
+
 shapes = {}  # (shape_name, rot) -> set(Square)
 for sn, sh in shapes_m.items():
     for rot in range(4):
@@ -101,9 +99,8 @@ for sn, sh in shapes_m.items():
         sh = rot_cw(sh)
 
 
-
 # position = top-left corner
-shape_start_pos = {
+shape_spawn_pos = {
     'L': Coord(3, -3),
     'J': Coord(4, -3),
     'T': Coord(4, -2),
@@ -112,7 +109,6 @@ shape_start_pos = {
     'SQ': Coord(4, -2),
     'I': Coord(4, -4)
 }
-
 
 
 @dataclass
@@ -167,7 +163,7 @@ class State:
 
     def spawn_block(self):
         sh_name = random.choice(list(shapes_m.keys()))
-        self.blck = Block(sh_name, shape_start_pos[sh_name])
+        self.blck = Block(sh_name, shape_spawn_pos[sh_name])
 
     def direction(self):
         if self.mov_right and (self.last_dir_r or (not self.mov_left)):
