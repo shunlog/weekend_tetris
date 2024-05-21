@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 SQW = 20
 BOARD_X = 10
-BOARD_Y = 20
+BOARD_Y_BUF = 4  # top rows are a hidden "buffer"
+BOARD_Y = 20 + BOARD_Y_BUF
 BOARD_W = BOARD_X * SQW
 BOARD_H = BOARD_Y * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
@@ -101,13 +102,13 @@ for sn, sh in shapes_m.items():
 
 # position = top-left corner
 shape_spawn_pos = {
-    'L': Coord(3, -3),
-    'J': Coord(4, -3),
-    'T': Coord(4, -2),
-    'S': Coord(4, -3),
-    'Z': Coord(4, -3),
-    'SQ': Coord(4, -2),
-    'I': Coord(4, -4)
+    'L': Coord(3, 1),
+    'J': Coord(4, 1),
+    'T': Coord(4, 2),
+    'S': Coord(4, 1),
+    'Z': Coord(4, 1),
+    'SQ': Coord(4, 2),
+    'I': Coord(4, 0)
 }
 
 
@@ -254,6 +255,7 @@ class State:
 
 def draw_board(s):
     board = pygame.Surface((BOARD_W, BOARD_H))
+    pygame.draw.rect(board, "gray", ((0, 0), (BOARD_W, BOARD_Y_BUF * SQW)))
     for i in range(BOARD_X):
         x = i * SQW
         pygame.draw.aaline(board, GRID_COLOR, (x, 0), (x, BOARD_H))
