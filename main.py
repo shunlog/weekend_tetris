@@ -6,10 +6,10 @@ from icecream import ic
 from dataclasses import dataclass
 
 SQW = 20
-BOARD_WN = 10
-BOARD_HN = 20
-BOARD_W = BOARD_WN * SQW
-BOARD_H = BOARD_HN * SQW
+BOARD_X = 10
+BOARD_Y = 20
+BOARD_W = BOARD_X * SQW
+BOARD_H = BOARD_Y * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
 FALL_SPEED = 200  # ms
 MOVE_SPEED = 200
@@ -111,15 +111,10 @@ shape_spawn_pos = {
 }
 
 
-@dataclass
-class Square:
-    pos: Coord
-    col: pygame.Color
-
-    def draw_on(self, sf):
-        xp = self.pos.x * SQW
-        yp = self.pos.y * SQW
-        pygame.draw.rect(sf, self.col, ((xp, yp), (SQW, SQW)))
+def draw_sq(sf, pos, col):
+    xp = pos.x * SQW
+    yp = pos.y * SQW
+    pygame.draw.rect(sf, col, ((xp, yp), (SQW, SQW)))
 
 
 class Block:
@@ -129,16 +124,16 @@ class Block:
         self.rot = rot
         self.col = colors[self.sh_name]
 
-    def squares(self):
-        sqrs = []
+    def pos_ls(self):
+        l = []
         for sq_pos in shapes[(self.sh_name, self.rot)]:
             npos = self.pos + sq_pos
-            sqrs.append(Square(npos, self.col))
-        return sqrs
+            l.append(npos)
+        return l
 
     def draw_on(self, sf):
-        for sq in self.squares():
-            sq.draw_on(sf)
+        for p in self.pos_ls():
+            draw_sq(sf, p, self.col)
 
     def rotate_cw(self):
         self.rot = (self.rot + 1) % 4
@@ -161,9 +156,9 @@ class State:
         self.auto_rep = False
         self.arr_prev_t = 0
 
-        self.sqrs = []
-        for _ in range(BOARD_H):
-            self.sqrs.append([None]*BOARD_W)
+        self.sqrs = []  # board matrix, value at (x, y) = pygame.Color
+        for _ in range(BOARD_Y):
+            self.sqrs.append([None]*BOARD_X)
 
         self.spawn_block()
 
@@ -179,23 +174,39 @@ class State:
         return 0
 
     def pos_overlapping(self, p):
-        return p.y >= BOARD_HN \
-            or (self.sqrs[p.y][p.x] is not None) \
-            or p.x < 0 or p.x >= BOARD_WN
+        if p.y < 0:
+            return False
+        return p.y >= BOARD_Y \
+            or p.x < 0 or p.x >= BOARD_X \
+            or (self.sqrs[p.y][p.x] is not None)
 
-    def square_on_floor(self, p):
+    def pos_on_floor(self, p):
         return self.pos_overlapping(p + Coord(0, 1))
 
     def block_overlapping(self):
-        return any(self.pos_overlapping(sq.pos) for sq in self.blck.squares())
+        return any(self.pos_overlapping(pos) for pos in self.blck.pos_ls())
 
     def block_on_floor(self):
-        return any(self.square_on_floor(sq.pos) for sq in self.blck.squares())
+        return any(self.pos_on_floor(pos) for pos in self.blck.pos_ls())
 
     def settle_block(self):
-        for sq in self.blck.squares():
-            self.sqrs[sq.pos.y][sq.pos.x] = sq
+        for pos in self.blck.pos_ls():
+            self.sqrs[pos.y][pos.x] = self.blck.col
+
+        self.kill_completed_lines()
+
         self.spawn_block()
+
+    def line_complete(self, y):
+        return all(self.sqrs[y])
+
+    def kill_completed_lines(self):
+        # assumes the pos_ls are both in matrix and block
+        lines_complete = {y for pos in self.blck.pos_ls() if self.line_complete(y := pos.y)}
+        for i, y in enumerate(sorted(lines_complete)):
+            # del from bottom to top
+            del self.sqrs[y]
+            self.sqrs.insert(0, [None]*BOARD_X)
 
     def fall(self):
         t = pygame.time.get_ticks()
@@ -205,7 +216,7 @@ class State:
         s.move_down()
 
     def move_down(self):
-        # return True if hit floow
+        # return True if hit floor
         if self.block_on_floor():
             self.settle_block()
             return True
@@ -242,18 +253,19 @@ class State:
 
 
 def draw_board(s):
-    board = pygame.Surface((BOARD_WN * SQW, BOARD_HN * SQW))
-    for i in range(BOARD_WN):
+    board = pygame.Surface((BOARD_W, BOARD_H))
+    for i in range(BOARD_X):
         x = i * SQW
         pygame.draw.aaline(board, GRID_COLOR, (x, 0), (x, BOARD_H))
-    for j in range(BOARD_HN):
+    for j in range(BOARD_Y):
         y = j * SQW
         pygame.draw.aaline(board, GRID_COLOR, (0, y), (BOARD_W, y))
-    for ln in s.sqrs:
-        for sq in ln:
-            if not sq:
+    for y, ln in enumerate(s.sqrs):
+        for x, col in enumerate(ln):
+            if not col:
                 continue
-            sq.draw_on(board)
+            pos = Coord(x, y)
+            draw_sq(board, pos, col)
     s.blck.draw_on(board)
 
     return board
