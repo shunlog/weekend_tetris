@@ -1,4 +1,4 @@
-# Tetris in an evening
+# Tetris in a weekend
 
 
 # Run
