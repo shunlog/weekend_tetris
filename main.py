@@ -196,10 +196,13 @@ class State:
         if t - s.prev_drop_t < FALL_SPEED:
             return
         s.prev_drop_t += FALL_SPEED
+        s.move_down()
 
+    def move_down(self):
+        # return True if hit floow
         if self.block_on_floor():
             self.settle_block()
-            return
+            return True
 
         self.blck.pos += Coord(0, 1)
 
@@ -221,6 +224,11 @@ class State:
         self.blck.pos += Coord(s.direction(), 0)
         if self.block_overlapping():
             self.blck.pos -= Coord(s.direction(), 0)
+
+    def drop(self):
+        while not self.move_down():
+            pass
+
 
 
 def draw_board(s):
@@ -256,6 +264,9 @@ def handle_input(s):
             s.running = False
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             match event.key:
+                case pygame.K_SPACE:
+                    if event.type == pygame.KEYDOWN:
+                        s.drop()
                 case pygame.K_RIGHT:
                     s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
