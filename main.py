@@ -6,14 +6,14 @@ from icecream import ic
 from dataclasses import dataclass
 
 SQW = 20
-BOARD_WN = 50
+BOARD_WN = 10
 BOARD_HN = 20
 BOARD_W = BOARD_WN * SQW
 BOARD_H = BOARD_HN * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
-FALL_SPEED = 100  # ms
+FALL_SPEED = 200  # ms
 MOVE_SPEED = 200
-DAS = 300  # delayed auto-shift (ms holding before start)
+DAS = 200  # delayed auto-shift (ms holding before start)
 ARR = 1 / 20  # Auto-repeat rate (ms)
 
 pygame.init()
@@ -163,6 +163,9 @@ class State:
         for _ in range(BOARD_H):
             self.sqrs.append([None]*BOARD_W)
 
+        self.spawn_block()
+
+    def spawn_block(self):
         sh_name = random.choice(list(shapes_m.keys()))
         self.blck = Block(sh_name, shape_start_pos[sh_name])
 
@@ -173,12 +176,24 @@ class State:
             return -1
         return 0
 
-    def square_on_floor(self, sq):
-        p = sq.pos + Coord(0, 1)
-        return p.y >= BOARD_HN or (self.sqrs[p.y][p.x] is not None)
+    def pos_overlapping(self, p):
+        return p.y >= BOARD_HN \
+            or (self.sqrs[p.y][p.x] is not None) \
+            or p.x < 0 or p.x >= BOARD_WN
+
+    def square_on_floor(self, p):
+        return self.pos_overlapping(p + Coord(0, 1))
+
+    def block_overlapping(self):
+        return any(self.pos_overlapping(sq.pos) for sq in self.blck.squares())
 
     def block_on_floor(self):
-        return any(self.square_on_floor(sq) for sq in self.blck.squares())
+        return any(self.square_on_floor(sq.pos) for sq in self.blck.squares())
+
+    def settle_block(self):
+        for sq in self.blck.squares():
+            self.sqrs[sq.pos.y][sq.pos.x] = sq
+        self.spawn_block()
 
     def fall(self):
         t = pygame.time.get_ticks()
@@ -187,6 +202,7 @@ class State:
         s.prev_drop_t += FALL_SPEED
 
         if self.block_on_floor():
+            self.settle_block()
             return
 
         self.blck.pos += Coord(0, 1)
@@ -207,6 +223,8 @@ class State:
 
     def move_side(self):
         self.blck.pos += Coord(s.direction(), 0)
+        if self.block_overlapping():
+            self.blck.pos -= Coord(s.direction(), 0)
 
 
 def draw_board(s):
@@ -268,7 +286,6 @@ def update(s):
 
 
 s = State()
-s.blck.pos += Coord(0, 1)
 
 while s.running:
     keys = pygame.key.get_pressed()
