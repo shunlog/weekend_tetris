@@ -5,13 +5,15 @@ import random
 from icecream import ic
 
 SQW = 20
-BOARD_WN = 10
+BOARD_WN = 50
 BOARD_HN = 20
 BOARD_W = BOARD_WN * SQW
 BOARD_H = BOARD_HN * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
 DROP_MS = 300
 SIDE_MS = 200
+DAS = 300  # delayed auto-shift (ms holding before start)
+ARR = 1 / 20  # Auto-repeat rate (ms)
 
 pygame.init()
 screen = pygame.display.set_mode((1280, 720))
@@ -79,15 +81,6 @@ shape_start_pos = {
 }
 
 
-def delay(prev_t, t_delay):
-    '''Return (new prev time, iteration_passed?)'''
-    t = pygame.time.get_ticks()
-    diff = t - prev_t
-    if diff < t_delay:
-        return prev_t, False
-    return prev_t + t_delay, True
-
-
 class Block:
     def __init__(self, sh_name, pos, rot=0):
         self.sh_name = sh_name
@@ -118,12 +111,16 @@ class State:
     def __init__(self):
         self.running = True
 
-        self.prev_drop_t = 0
-        self.prev_side_t = 0
         self.dropping = False
+        self.prev_drop_t = 0
+
         self.mov_right = False  # Right arrow pressed
         self.mov_left = False  # Left arrow pressed
         self.last_dir_r = False   # Check what direction was pressed last
+        self.last_mov_t = 0  # Time when last dir key was pressed/released
+        self.auto_rep = False
+        self.arr_prev_t = 0
+
         self.blocks = []
         sh_name = random.choice(list(shapes.keys()))
         self.blck = Block(sh_name, shape_start_pos[sh_name])
@@ -136,20 +133,27 @@ class State:
         return 0
 
     def fall(self):
-        s.prev_drop_t, passed = delay(s.prev_drop_t, DROP_MS)
-        if passed:
-            self.blck.pos += pygame.Vector2(0, 1)
+        t = pygame.time.get_ticks()
+        if t - s.prev_drop_t < DROP_MS:
+            return
+        s.prev_drop_t += DROP_MS
+        self.blck.pos += pygame.Vector2(0, 1)
 
-    def continue_side(self):
-        s.prev_side_t, passed = delay(s.prev_side_t, SIDE_MS)
-        if passed:
-            self._move_side()
+    def autorepeat(self):
+        t = pygame.time.get_ticks()
+        if t - self.last_mov_t < DAS or self.direction() == 0:
+            return
+
+        if self.arr_prev_t < self.last_mov_t:
+            self.arr_prev_t = self.last_mov_t + DAS - ARR
+
+        if t - self.arr_prev_t < ARR:
+            return
+
+        self.arr_prev_t += ARR
+        self.move_side()
 
     def move_side(self):
-        s.prev_side_t = pygame.time.get_ticks()
-        self._move_side()
-
-    def _move_side(self):
         self.blck.pos += (s.direction(), 0)
 
 
@@ -184,6 +188,7 @@ def handle_input(s):
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             match event.key:
                 case pygame.K_RIGHT:
+                    s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
                         s.mov_right = True
                         s.last_dir_r = True
@@ -191,6 +196,7 @@ def handle_input(s):
                     else:
                         s.mov_right = False
                 case pygame.K_LEFT:
+                    s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
                         s.mov_left = True
                         s.last_dir_r = False
@@ -203,10 +209,11 @@ def handle_input(s):
 
 def update(s):
     s.fall()
-    s.continue_side()
+    s.autorepeat()
 
 
 s = State()
+s.blck.pos += pygame.Vector2(0, 5)
 
 while s.running:
     keys = pygame.key.get_pressed()
