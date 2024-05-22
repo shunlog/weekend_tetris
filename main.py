@@ -215,10 +215,10 @@ class State:
 
     def fall(self):
         t = pygame.time.get_ticks()
-        if t - s.prev_drop_t < FALL_SPEED:
+        if t - self.prev_drop_t < FALL_SPEED:
             return
-        s.prev_drop_t += FALL_SPEED
-        s.move_down()
+        self.prev_drop_t += FALL_SPEED
+        self.move_down()
 
     def move_down(self):
         # return True if hit floor
@@ -243,9 +243,9 @@ class State:
         self.move_side()
 
     def move_side(self):
-        self.blck.pos += Coord(s.direction(), 0)
+        self.blck.pos += Coord(self.direction(), 0)
         if self.block_overlapping():
-            self.blck.pos -= Coord(s.direction(), 0)
+            self.blck.pos -= Coord(self.direction(), 0)
 
     def drop(self):
         while not self.move_down():
