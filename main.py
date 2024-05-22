@@ -130,26 +130,27 @@ shape_spawn_pos = {
 
 
 # Wall kick data from https://tetris.wiki/Super_Rotation_System
-wall_kick_LJSZ = {
-    (0, 1): ((0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)),
-    (1, 0): ((0, 0), (1, 0), (1, -1), (0, 2), (1, 2)),
-    (1, 2): ((0, 0), (1, 0), (1, -1), (0, 2), (1, 2)),
-    (2, 1): ((0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)),
-    (2, -1): ((0, 0), (1, 0), (1, 1), (0, -2), (1, -2)),
-    (-1, 2): ((0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)),
-    (-1, 0): ((0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)),
-    (0, -1): ((0, 0), (1, 0), (1, 1), (0, -2), (1, -2))
+# (current state, desired state) -> five positions to try before failing
+wall_kick_LJSZT = {
+    (RotationState.R0, RotationState.R1): ((0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)),
+    (RotationState.R1, RotationState.R0): ((0, 0), (1, 0), (1, -1), (0, 2), (1, 2)),
+    (RotationState.R1, RotationState.R2): ((0, 0), (1, 0), (1, -1), (0, 2), (1, 2)),
+    (RotationState.R2, RotationState.R1): ((0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)),
+    (RotationState.R2, RotationState.R3): ((0, 0), (1, 0), (1, 1), (0, -2), (1, -2)),
+    (RotationState.R3, RotationState.R2): ((0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)),
+    (RotationState.R3, RotationState.R0): ((0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)),
+    (RotationState.R0, RotationState.R3): ((0, 0), (1, 0), (1, 1), (0, -2), (1, -2))
 }
 
 wall_kick_I = {
-    (0, 1): ((0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)),
-    (1, 0): ((0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)),
-    (1, 2): ((0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1)),
-    (2, 1): ((0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)),
-    (2, -1): ((0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)),
-    (-1, 2): ((0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)),
-    (-1, 0): ((0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)),
-    (0, -1): ((0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1))
+    (RotationState.R0, RotationState.R1): ((0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)),
+    (RotationState.R1, RotationState.R0): ((0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)),
+    (RotationState.R1, RotationState.R2): ((0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1)),
+    (RotationState.R2, RotationState.R1): ((0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)),
+    (RotationState.R2, RotationState.R3): ((0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)),
+    (RotationState.R3, RotationState.R2): ((0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)),
+    (RotationState.R3, RotationState.R0): ((0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)),
+    (RotationState.R0, RotationState.R3): ((0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1))
 }
 
 
@@ -184,15 +185,15 @@ def draw_sq(sf, pos, col):
 
 
 class Block:
-    def __init__(self, sh_name, pos, rot=RotationState.R0):
-        self.sh_name = sh_name
+    def __init__(self, shape, pos, rot=RotationState.R0):
+        self.shape = shape
         self.pos = pos  # top-left corner of the shape matrix
         self.rot = rot
-        self.col = colors[self.sh_name]
+        self.col = colors[self.shape]
 
     def pos_ls(self):
         l = []
-        for sq_pos in shapes[(self.sh_name, self.rot)]:
+        for sq_pos in shapes[(self.shape, self.rot)]:
             npos = self.pos + sq_pos
             l.append(npos)
         return l
@@ -223,8 +224,8 @@ class State:
         self.spawn_block()
 
     def spawn_block(self):
-        sh_name = random.choice(list(Shape))
-        self.blck = Block(sh_name, shape_spawn_pos[sh_name])
+        shape = random.choice(list(Shape))
+        self.blck = Block(shape, shape_spawn_pos[shape])
 
     def direction(self):
         if self.right_pressed and (self.right_last or (not self.left_pressed)):
@@ -243,8 +244,9 @@ class State:
     def pos_on_floor(self, p):
         return self.pos_overlapping(p + Coord(0, 1))
 
-    def block_overlapping(self):
-        return any(self.pos_overlapping(pos) for pos in self.blck.pos_ls())
+    def block_overlapping(self, blck=None):
+        blck = self.blck if not blck else blck
+        return any(self.pos_overlapping(pos) for pos in blck.pos_ls())
 
     def block_on_floor(self):
         return any(self.pos_on_floor(pos) for pos in self.blck.pos_ls())
@@ -311,11 +313,37 @@ class State:
             pass
         self.lock_block(force=True)
 
+    def _rotate_block(self, blck, rn):
+        wall_kick_data = wall_kick_LJSZT \
+            if self.blck.shape in (Shape.L, Shape.J, Shape.S, Shape.Z, Shape.T) \
+            else wall_kick_I
+        result_rot = blck.rot.rotate(rn)
+        for x, y in wall_kick_data[(blck.rot, result_rot)]:
+            y = -y  # they used positive Y upwards in the data table, but I used opposite
+            pos_offset = Coord(x, y)
+            npos = blck.pos + pos_offset
+            result_blck = Block(blck.shape, npos, result_rot)
+
+            if self.block_overlapping(result_blck):
+                continue
+            return result_blck
+        return blck
+
     def rotate(self, rn):
-        self.blck.rot = self.blck.rot.rotate(rn)
-        if self.block_overlapping():
-            self.blck.rot = self.blck.rot.rotate(rn.undo())
+        if self.blck.shape == Shape.O:
             return
+
+        if rn == Rotation.DOUBLE:
+            result_blck = self._rotate_block(self.blck, Rotation.CCW)
+            if result_blck == self.blck:
+                return False
+            result_blck = self._rotate_block(result_blck, Rotation.CCW)
+        else:
+            result_blck = self._rotate_block(self.blck, rn)
+        if result_blck == self.blck:
+            return False
+
+        self.blck = result_blck
         self.last_move_t = pygame.time.get_ticks()
 
 
