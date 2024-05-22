@@ -260,26 +260,21 @@ class State:
             pass
         self.lock_block(force=True)
 
-    def rotate_cw(self):
-        self.blck.rotate_cw()
+    def rotate(self, method, counter):
+        method()
         if self.block_overlapping():
-            self.blck.rotate_ccw()
+            counter()
             return
         self.last_move_t = pygame.time.get_ticks()
+
+    def rotate_cw(self):
+        self.rotate(self.blck.rotate_cw, self.blck.rotate_ccw)
 
     def rotate_ccw(self):
-        self.blck.rotate_ccw()
-        if self.block_overlapping():
-            self.blck.rotate_cw()
-            return
-        self.last_move_t = pygame.time.get_ticks()
+        self.rotate(self.blck.rotate_ccw, self.blck.rotate_cw)
 
     def rotate_180(self):
-        self.blck.rotate_180()
-        if self.block_overlapping():
-            self.blck.rotate_180()
-            return
-        self.last_move_t = pygame.time.get_ticks()
+        self.rotate(self.blck.rotate_180, self.blck.rotate_180)
 
 
 def draw_board(s):
