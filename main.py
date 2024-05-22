@@ -12,7 +12,8 @@ BOARD_Y = 20 + BOARD_Y_BUF
 BOARD_W = BOARD_X * SQW
 BOARD_H = BOARD_Y * SQW
 GRID_COLOR = pygame.Color(50, 50, 50)
-FALL_SPEED = 200  # ms
+FALL_SPEED = 400  # ms
+SOFT_DROP_SPEED = 40  # ms
 MOVE_SPEED = 200
 DAS = 200  # delayed auto-shift (ms holding before start)
 ARR = 1 / 20  # Auto-repeat rate (ms)
@@ -153,6 +154,7 @@ class State:
 
         self.dropping = False
         self.prev_drop_t = 0
+        self.soft_drop = False
 
         self.mov_right = False  # Right arrow pressed
         self.mov_left = False  # Left arrow pressed
@@ -215,9 +217,10 @@ class State:
 
     def fall(self):
         t = pygame.time.get_ticks()
-        if t - self.prev_drop_t < FALL_SPEED:
+        delay = SOFT_DROP_SPEED if self.soft_drop else FALL_SPEED
+        if t - self.prev_drop_t < delay:
             return
-        self.prev_drop_t += FALL_SPEED
+        self.prev_drop_t += delay
         self.move_down()
 
     def move_down(self):
@@ -312,6 +315,9 @@ def handle_input(s):
                     s.rotate_cw()
                 case pygame.K_SPACE if event.type == pygame.KEYDOWN:
                     s.drop()
+                case pygame.K_DOWN:
+                    s.soft_drop = True if event.type == pygame.KEYDOWN else False
+                    pass
                 case pygame.K_RIGHT:
                     s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
@@ -328,8 +334,6 @@ def handle_input(s):
                         s.move_side()
                     else:
                         s.mov_left = False
-                case pygame.K_DOWN:
-                    pass
 
 
 def update(s):
