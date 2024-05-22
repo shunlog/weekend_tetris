@@ -274,6 +274,7 @@ class State:
     def spawn_block(self):
         shape = random.choice(list(Shape))
         self.blck = Block(shape, shape_spawn_pos[shape])
+        self.prev_drop_t = pygame.time.get_ticks()
 
     def direction(self):
         if self.right_pressed and (self.right_last or (not self.left_pressed)):
