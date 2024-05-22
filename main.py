@@ -18,11 +18,6 @@ DAS = 200  # delayed auto-shift (ms holding before start)
 ARR = 1 / 20  # Auto-repeat rate (ms)
 LOCK_DELAY = 500
 
-pygame.init()
-screen = pygame.display.set_mode((600, 720))
-
-clock = pygame.time.Clock()
-dt = 0
 
 
 class Coord:
@@ -370,18 +365,22 @@ def update(s):
     s.handle_DAS()
 
 
-s = State()
+if __name__ == "__main__":
+    pygame.init()
+    screen = pygame.display.set_mode((600, 720))
+    clock = pygame.time.Clock()
+    dt = 0
+    s = State()
+    while s.running:
+        keys = pygame.key.get_pressed()
+        # TODO make these functions pure?
+        handle_input(s)
+        update(s)
+        draw_frame(s)
 
-while s.running:
-    keys = pygame.key.get_pressed()
-    # TODO make these functions pure?
-    handle_input(s)
-    update(s)
-    draw_frame(s)
+        # limits FPS to 60
+        # dt is delta time in seconds since last frame, used for framerate-
+        # independent physics.
+        dt = clock.tick(60) / 1000
 
-    # limits FPS to 60
-    # dt is delta time in seconds since last frame, used for framerate-
-    # independent physics.
-    dt = clock.tick(60) / 1000
-
-pygame.quit()
+    pygame.quit()
