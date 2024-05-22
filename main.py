@@ -3,7 +3,6 @@
 import pygame
 import random
 from icecream import ic
-from dataclasses import dataclass
 
 SQW = 20
 BOARD_X = 10
@@ -147,6 +146,9 @@ class Block:
     def rotate_ccw(self):
         self.rot = (self.rot - 1) % 4
 
+    def rotate_180(self):
+        self.rot = (self.rot + 2) % 4
+
 
 class State:
     def __init__(self):
@@ -156,16 +158,14 @@ class State:
         self.prev_drop_t = 0
         self.soft_drop = False
 
-        self.mov_right = False  # Right arrow pressed
-        self.mov_left = False  # Left arrow pressed
-        self.last_dir_r = False   # Check what direction was pressed last
+        self.right_pressed = False  # Right arrow pressed
+        self.left_pressed = False  # Left arrow pressed
+        self.right_last = False   # Check what direction was pressed last
         self.last_mov_t = 0  # Time when last dir key was pressed/released
-        self.auto_rep = False
-        self.DAS_prev_t = 0
 
-        self.sqrs = []  # board matrix, value at (x, y) = pygame.Color
+        self.matrix = []  # board matrix, value at (x, y) = pygame.Color
         for _ in range(BOARD_Y):
-            self.sqrs.append([None]*BOARD_X)
+            self.matrix.append([None]*BOARD_X)
 
         self.spawn_block()
 
@@ -174,9 +174,9 @@ class State:
         self.blck = Block(sh_name, shape_spawn_pos[sh_name])
 
     def direction(self):
-        if self.mov_right and (self.last_dir_r or (not self.mov_left)):
+        if self.right_pressed and (self.right_last or (not self.left_pressed)):
             return 1
-        if self.mov_left and (not self.last_dir_r or (not self.mov_right)):
+        if self.left_pressed and (not self.right_last or (not self.right_pressed)):
             return -1
         return 0
 
@@ -185,7 +185,7 @@ class State:
             return False
         return p.y >= BOARD_Y \
             or p.x < 0 or p.x >= BOARD_X \
-            or (self.sqrs[p.y][p.x] is not None)
+            or (self.matrix[p.y][p.x] is not None)
 
     def pos_on_floor(self, p):
         return self.pos_overlapping(p + Coord(0, 1))
@@ -196,24 +196,24 @@ class State:
     def block_on_floor(self):
         return any(self.pos_on_floor(pos) for pos in self.blck.pos_ls())
 
-    def settle_block(self):
+    def lock_block(self):
         for pos in self.blck.pos_ls():
-            self.sqrs[pos.y][pos.x] = self.blck.col
+            self.matrix[pos.y][pos.x] = self.blck.col
 
         self.kill_completed_lines()
 
         self.spawn_block()
 
     def line_complete(self, y):
-        return all(self.sqrs[y])
+        return all(self.matrix[y])
 
     def kill_completed_lines(self):
         # assumes the pos_ls are both in matrix and block
         lines_complete = {y for pos in self.blck.pos_ls() if self.line_complete(y := pos.y)}
         for i, y in enumerate(sorted(lines_complete)):
             # del from bottom to top
-            del self.sqrs[y]
-            self.sqrs.insert(0, [None]*BOARD_X)
+            del self.matrix[y]
+            self.matrix.insert(0, [None]*BOARD_X)
 
     def fall(self):
         t = pygame.time.get_ticks()
@@ -226,23 +226,17 @@ class State:
     def move_down(self):
         # return True if hit floor
         if self.block_on_floor():
-            self.settle_block()
+            self.lock_block()
             return True
 
         self.blck.pos += Coord(0, 1)
 
     def handle_DAS(self):
         t = pygame.time.get_ticks()
-        if t - self.last_mov_t < DAS or self.direction() == 0:
+        if (t - (self.last_mov_t + DAS)) < ARR \
+           and self.direction() != 0:
             return
 
-        if self.DAS_prev_t < self.last_mov_t:
-            self.DAS_prev_t = self.last_mov_t + DAS - ARR
-
-        if t - self.DAS_prev_t < ARR:
-            return
-
-        self.DAS_prev_t += ARR
         self.move_side()
 
     def move_side(self):
@@ -265,11 +259,9 @@ class State:
             self.blck.rotate_cw()
 
     def rotate_180(self):
-        self.blck.rotate_ccw()
-        self.blck.rotate_ccw()
+        self.blck.rotate_180()
         if self.block_overlapping():
-            self.blck.rotate_cw()
-            self.blck.rotate_cw()
+            self.blck.rotate_180()
 
 
 def draw_board(s):
@@ -281,7 +273,7 @@ def draw_board(s):
     for j in range(BOARD_Y):
         y = j * SQW
         pygame.draw.aaline(board, GRID_COLOR, (0, y), (BOARD_W, y))
-    for y, ln in enumerate(s.sqrs):
+    for y, ln in enumerate(s.matrix):
         for x, col in enumerate(ln):
             if not col:
                 continue
@@ -321,19 +313,19 @@ def handle_input(s):
                 case pygame.K_RIGHT:
                     s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
-                        s.mov_right = True
-                        s.last_dir_r = True
+                        s.right_pressed = True
+                        s.right_last = True
                         s.move_side()
                     else:
-                        s.mov_right = False
+                        s.right_pressed = False
                 case pygame.K_LEFT:
                     s.last_mov_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
-                        s.mov_left = True
-                        s.last_dir_r = False
+                        s.left_pressed = True
+                        s.right_last = False
                         s.move_side()
                     else:
-                        s.mov_left = False
+                        s.left_pressed = False
 
 
 def update(s):
