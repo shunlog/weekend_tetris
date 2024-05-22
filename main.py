@@ -2,6 +2,7 @@
 # Example file showing a circle moving on screen
 import pygame
 import random
+import enum
 from icecream import ic
 
 SQW = 20
@@ -35,41 +36,51 @@ class Coord:
         return Coord(self.x - other.x, self.y - other.y)
 
 
+class Shape(enum.Enum):
+    L = enum.auto()
+    J = enum.auto()
+    T = enum.auto()
+    S = enum.auto()
+    Z = enum.auto()
+    O = enum.auto()
+    I = enum.auto()
+
+
 colors = {
-    'L': "orange",
-    'J': "blue",
-    'T': "purple",
-    'S': "green",
-    'Z':  "red",
-    'SQ': "yellow",
-    'I': "cyan"
+    Shape.L: "orange",
+    Shape.J: "blue",
+    Shape.T: "purple",
+    Shape.S: "green",
+    Shape.Z: "red",
+    Shape.O: "yellow",
+    Shape.I: "cyan"
 }
 
 shapes_m = {
-    'L': ((0, 0, 1),
+    Shape.L: ((0, 0, 1),
           (1, 1, 1),
           (0, 0, 0)),
 
-    'J': ((1, 0, 0),
+    Shape.J: ((1, 0, 0),
           (1, 1, 1),
           (0, 0, 0)),
 
-    'T': ((0, 1, 0),
+    Shape.T: ((0, 1, 0),
           (1, 1, 1),
           (0, 0, 0)),
 
-    'S': ((0, 1, 1),
+    Shape.S: ((0, 1, 1),
           (1, 1, 0),
           (0, 0, 0)),
 
-    'Z': ((1, 1, 0),
+    Shape.Z: ((1, 1, 0),
           (0, 1, 1),
           (0, 0, 0)),
 
-    'SQ': ((1, 1),
+    Shape.O: ((1, 1),
            (1, 1)),
 
-    'I': ((0, 0, 0, 0),
+    Shape.I: ((0, 0, 0, 0),
           (1, 1, 1, 1),
           (0, 0, 0, 0),
           (0, 0, 0, 0))
@@ -77,13 +88,13 @@ shapes_m = {
 
 # position = top-left corner
 shape_spawn_pos = {
-    'L': Coord(3, 1),
-    'J': Coord(3, 1),
-    'T': Coord(3, 1),
-    'S': Coord(3, 1),
-    'Z': Coord(3, 1),
-    'SQ': Coord(4, 1),
-    'I': Coord(3, 1)
+    Shape.L: Coord(3, 1),
+    Shape.J: Coord(3, 1),
+    Shape.T: Coord(3, 1),
+    Shape.S: Coord(3, 1),
+    Shape.Z: Coord(3, 1),
+    Shape.O: Coord(4, 1),
+    Shape.I: Coord(3, 1)
 }
 
 
