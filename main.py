@@ -16,9 +16,10 @@ SOFT_DROP_SPEED = 40  # ms
 MOVE_SPEED = 200
 DAS = 200  # delayed auto-shift (ms holding before start)
 ARR = 1 / 20  # Auto-repeat rate (ms)
+LOCK_DELAY = 500
 
 pygame.init()
-screen = pygame.display.set_mode((1280, 720))
+screen = pygame.display.set_mode((600, 720))
 
 clock = pygame.time.Clock()
 dt = 0
@@ -157,11 +158,12 @@ class State:
         self.dropping = False
         self.prev_drop_t = 0
         self.soft_drop = False
+        self.last_move_t = 0  # when last successful shift/rotation was performed
 
         self.right_pressed = False  # Right arrow pressed
         self.left_pressed = False  # Left arrow pressed
         self.right_last = False   # Check what direction was pressed last
-        self.last_mov_t = 0  # Time when last dir key was pressed/released
+        self.last_side_t = 0  # Time when last side key was pressed or released
 
         self.matrix = []  # board matrix, value at (x, y) = pygame.Color
         for _ in range(BOARD_Y):
@@ -196,7 +198,11 @@ class State:
     def block_on_floor(self):
         return any(self.pos_on_floor(pos) for pos in self.blck.pos_ls())
 
-    def lock_block(self):
+    def lock_block(self, force=False):
+        t = pygame.time.get_ticks()
+        if not force and t - self.last_move_t < LOCK_DELAY:
+            return
+
         for pos in self.blck.pos_ls():
             self.matrix[pos.y][pos.x] = self.blck.col
 
@@ -229,39 +235,51 @@ class State:
             self.lock_block()
             return True
 
+        self.last_move_t = pygame.time.get_ticks()
         self.blck.pos += Coord(0, 1)
 
     def handle_DAS(self):
         t = pygame.time.get_ticks()
-        if (t - (self.last_mov_t + DAS)) < ARR \
+        if (t - (self.last_side_t + DAS)) < ARR \
            and self.direction() != 0:
             return
 
         self.move_side()
 
     def move_side(self):
+        if self.direction() == 0:
+            return
         self.blck.pos += Coord(self.direction(), 0)
         if self.block_overlapping():
             self.blck.pos -= Coord(self.direction(), 0)
+            return
+        self.last_move_t = pygame.time.get_ticks()
 
     def drop(self):
         while not self.move_down():
             pass
+        self.lock_block(force=True)
 
     def rotate_cw(self):
         self.blck.rotate_cw()
         if self.block_overlapping():
             self.blck.rotate_ccw()
+            return
+        self.last_move_t = pygame.time.get_ticks()
 
     def rotate_ccw(self):
         self.blck.rotate_ccw()
         if self.block_overlapping():
             self.blck.rotate_cw()
+            return
+        self.last_move_t = pygame.time.get_ticks()
 
     def rotate_180(self):
         self.blck.rotate_180()
         if self.block_overlapping():
             self.blck.rotate_180()
+            return
+        self.last_move_t = pygame.time.get_ticks()
 
 
 def draw_board(s):
@@ -311,7 +329,7 @@ def handle_input(s):
                     s.soft_drop = True if event.type == pygame.KEYDOWN else False
                     pass
                 case pygame.K_RIGHT:
-                    s.last_mov_t = pygame.time.get_ticks()
+                    s.last_side_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
                         s.right_pressed = True
                         s.right_last = True
@@ -319,7 +337,7 @@ def handle_input(s):
                     else:
                         s.right_pressed = False
                 case pygame.K_LEFT:
-                    s.last_mov_t = pygame.time.get_ticks()
+                    s.last_side_t = pygame.time.get_ticks()
                     if event.type == pygame.KEYDOWN:
                         s.left_pressed = True
                         s.right_last = False
