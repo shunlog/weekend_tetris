@@ -46,6 +46,37 @@ class Shape(enum.Enum):
     I = enum.auto()
 
 
+class Rotation(enum.Enum):
+    CW = enum.auto()
+    DOUBLE = enum.auto()
+    CCW = enum.auto()
+
+    def undo(self):
+        match self:
+            case Rotation.CW:
+                return Rotation.CCW
+            case Rotation.DOUBLE:
+                return Rotation.DOUBLE
+            case Rotation.CCW:
+                return Rotation.CW
+
+
+class RotationState(enum.Enum):
+    R0 = 0
+    R1 = 1
+    R2 = 2
+    R3 = 3
+
+    def rotate(self, rot):
+        match rot:
+            case Rotation.CW:
+                return RotationState((self.value + 1) % 4)
+            case Rotation.DOUBLE:
+                return RotationState((self.value + 2) % 4)
+            case Rotation.CCW:
+                return RotationState((self.value + 3) % 4)
+
+
 colors = {
     Shape.L: "orange",
     Shape.J: "blue",
@@ -141,10 +172,9 @@ def rot_ccw(m):
 
 shapes = {}  # (shape_name, rot) -> set(Square)
 for sn, sh in shapes_m.items():
-    for rot in range(4):
+    for rot in RotationState:
         shapes[(sn, rot)] = set(Coord(x, y) for (x, y) in matrix_to_set(sh))
         sh = rot_ccw(sh)
-
 
 
 def draw_sq(sf, pos, col):
@@ -154,7 +184,7 @@ def draw_sq(sf, pos, col):
 
 
 class Block:
-    def __init__(self, sh_name, pos, rot=0):
+    def __init__(self, sh_name, pos, rot=RotationState.R0):
         self.sh_name = sh_name
         self.pos = pos  # top-left corner of the shape matrix
         self.rot = rot
@@ -170,15 +200,6 @@ class Block:
     def draw_on(self, sf):
         for p in self.pos_ls():
             draw_sq(sf, p, self.col)
-
-    def rotate_cw(self):
-        self.rot = (self.rot + 1) % 4
-
-    def rotate_ccw(self):
-        self.rot = (self.rot - 1) % 4
-
-    def rotate_180(self):
-        self.rot = (self.rot + 2) % 4
 
 
 class State:
@@ -202,7 +223,7 @@ class State:
         self.spawn_block()
 
     def spawn_block(self):
-        sh_name = random.choice(list(shapes_m.keys()))
+        sh_name = random.choice(list(Shape))
         self.blck = Block(sh_name, shape_spawn_pos[sh_name])
 
     def direction(self):
@@ -290,21 +311,12 @@ class State:
             pass
         self.lock_block(force=True)
 
-    def rotate(self, method, counter):
-        method()
+    def rotate(self, rn):
+        self.blck.rot = self.blck.rot.rotate(rn)
         if self.block_overlapping():
-            counter()
+            self.blck.rot = self.blck.rot.rotate(rn.undo())
             return
         self.last_move_t = pygame.time.get_ticks()
-
-    def rotate_cw(self):
-        self.rotate(self.blck.rotate_cw, self.blck.rotate_ccw)
-
-    def rotate_ccw(self):
-        self.rotate(self.blck.rotate_ccw, self.blck.rotate_cw)
-
-    def rotate_180(self):
-        self.rotate(self.blck.rotate_180, self.blck.rotate_180)
 
 
 def draw_board(s):
@@ -343,11 +355,11 @@ def handle_input(s):
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             match event.key:
                 case pygame.K_a if event.type == pygame.KEYDOWN:
-                    s.rotate_180()
+                    s.rotate(Rotation.DOUBLE)
                 case pygame.K_z if event.type == pygame.KEYDOWN:
-                    s.rotate_ccw()
+                    s.rotate(Rotation.CCW)
                 case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
-                    s.rotate_cw()
+                    s.rotate(Rotation.CW)
                 case pygame.K_SPACE if event.type == pygame.KEYDOWN:
                     s.drop()
                 case pygame.K_DOWN:
