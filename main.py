@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
-# Example file showing a circle moving on screen
 import pygame
 import random
 import enum
 from icecream import ic
 
-SQW = 25
-BOARD_Y_BUF = 4  # top rows are a hidden "buffer"
-BOARD_X = 10
+WINDOW_SIZE = (900, 720)
+SQW = 25  # width of the squares
+BOARD_Y_BUF = 4  # top rows are the "buffer" zone
+BOARD_X = 10  # number of cells
 BOARD_Y = 20 + BOARD_Y_BUF
-BOARD_W = BOARD_X * SQW
+BOARD_W = BOARD_X * SQW  # width in pixels
 BOARD_H = BOARD_Y * SQW
 BOARD_H_BUF = BOARD_Y_BUF * SQW
 
-GRID_COLOR = "gray10"
-FALL_SPEED = 400  # ms
-SOFT_DROP_SPEED = 40  # ms
-MOVE_SPEED = 200
-DAS = 200  # delayed auto-shift (ms holding before start)
-ARR = 1 / 20  # Auto-repeat rate (ms)
-LOCK_DELAY = 500
-WINDOW_SIZE = (900, 720)
+FALL_SPEED = 400  # ms until the block falls one level
+SOFT_DROP_SPEED = 40  # drop speed while holding "down"
+DAS = 200  # delay before auto-shift kicks in
+ARR = 1 / 20  # ms for each auto-shift
+LOCK_DELAY = 500  # ms of no successful movement/rotation before block gets locked
 
 
 def center_pos(s1, s2):
@@ -173,15 +170,6 @@ wall_kick_I = {
 }
 
 
-def matrix_to_set(m):
-    s = set()
-    for y, l in enumerate(sh):
-        for x, c in enumerate(l):
-            if c == 1:
-                s.add((x, y))
-    return s
-
-
 def rot_cw(m):
     return list(zip(*m))[::-1]
 
@@ -193,7 +181,8 @@ def rot_ccw(m):
 shapes = {}  # (shape_name, rot) -> set(Square)
 for sn, sh in shapes_m.items():
     for rot in RotationState:
-        shapes[(sn, rot)] = set(Coord(x, y) for (x, y) in matrix_to_set(sh))
+        coord_set = {Coord(x, y) for y, row in enumerate(sh) for x, cell in enumerate(row) if cell}
+        shapes[(sn, rot)] = coord_set
         sh = rot_ccw(sh)
 
 
@@ -242,6 +231,45 @@ class State:
             self.matrix.append([None]*BOARD_X)
 
         self.spawn_block()
+
+    def update(self):
+        if not self.game_over:
+            self.fall()
+            self.handle_DAS()
+
+    def handle_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
+                match event.key:
+                    case pygame.K_a if event.type == pygame.KEYDOWN:
+                        self.rotate(Rotation.DOUBLE)
+                    case pygame.K_z if event.type == pygame.KEYDOWN:
+                        self.rotate(Rotation.CCW)
+                    case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
+                        self.rotate(Rotation.CW)
+                    case pygame.K_SPACE if event.type == pygame.KEYDOWN:
+                        self.drop()
+                    case pygame.K_DOWN:
+                        self.soft_drop = True if event.type == pygame.KEYDOWN else False
+                        pass
+                    case pygame.K_RIGHT:
+                        self.last_side_t = pygame.time.get_ticks()
+                        if event.type == pygame.KEYDOWN:
+                            self.right_pressed = True
+                            self.right_last = True
+                            self.move_side()
+                        else:
+                            self.right_pressed = False
+                    case pygame.K_LEFT:
+                        self.last_side_t = pygame.time.get_ticks()
+                        if event.type == pygame.KEYDOWN:
+                            self.left_pressed = True
+                            self.right_last = False
+                            self.move_side()
+                        else:
+                            self.left_pressed = False
 
     def spawn_block(self):
         shape = random.choice(list(Shape))
@@ -375,105 +403,60 @@ class State:
         self.last_move_t = pygame.time.get_ticks()
 
 
-def draw_board(s):
-    board = pygame.Surface((BOARD_W, BOARD_H))
-    board.fill("black")
-    pygame.draw.rect(board, "gray3", ((0, 0), (BOARD_W, BOARD_Y_BUF * SQW)))
+    def draw_board(self):
+        board = pygame.Surface((BOARD_W, BOARD_H))
+        board.fill("black")
+        pygame.draw.rect(board, "gray3", ((0, 0), (BOARD_W, BOARD_Y_BUF * SQW)))
 
-    for i in range(1, BOARD_X):
-        x = i * SQW
-        pygame.draw.aaline(board, GRID_COLOR, (x, 0), (x, BOARD_H))
-    for j in range(1, BOARD_Y):
-        y = j * SQW
-        pygame.draw.aaline(board, GRID_COLOR, (0, y), (BOARD_W, y))
-    pygame.draw.aaline(board, "gray42", (0, BOARD_H_BUF), (BOARD_W, BOARD_H_BUF))
-    for y, ln in enumerate(s.matrix):
-        for x, col in enumerate(ln):
-            if not col:
-                continue
-            pos = Coord(x, y)
-            draw_sq(board, pos, col)
-    s.blck.draw_on(board)
+        GRID_COLOR = "gray10"
+        for i in range(1, BOARD_X):
+            x = i * SQW
+            pygame.draw.aaline(board, GRID_COLOR, (x, 0), (x, BOARD_H))
+        for j in range(1, BOARD_Y):
+            y = j * SQW
+            pygame.draw.aaline(board, GRID_COLOR, (0, y), (BOARD_W, y))
+        pygame.draw.aaline(board, "gray42", (0, BOARD_H_BUF), (BOARD_W, BOARD_H_BUF))
+        for y, ln in enumerate(self.matrix):
+            for x, col in enumerate(ln):
+                if not col:
+                    continue
+                pos = Coord(x, y)
+                draw_sq(board, pos, col)
+        self.blck.draw_on(board)
 
-    if s.game_over:
-        font = pygame.font.Font(size=SQW*2)
-        txt = font.render("Game over!", True, "white")
-        board.blit(txt, center_pos(board, txt))
+        if self.game_over:
+            font = pygame.font.Font(size=SQW*2)
+            txt = font.render("Game over!", True, "white")
+            board.blit(txt, center_pos(board, txt))
 
-    w = 2
-    border = pygame.Surface((BOARD_W+w*2, BOARD_H+w*2))
-    border.fill("white")
-    border.blit(board, center_pos(border, board))
+        w = 2
+        border = pygame.Surface((BOARD_W+w*2, BOARD_H+w*2))
+        border.fill("white")
+        border.blit(board, center_pos(border, board))
 
-    return border
-
-
-def draw_frame(s):
-    screen.fill("gray20")
-
-    board = draw_board(s)
-    screen.blit(board, center_pos(screen, board))
-
-    pygame.display.flip()
-
-
-def handle_input(s):
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            s.running = False
-        elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
-            match event.key:
-                case pygame.K_a if event.type == pygame.KEYDOWN:
-                    s.rotate(Rotation.DOUBLE)
-                case pygame.K_z if event.type == pygame.KEYDOWN:
-                    s.rotate(Rotation.CCW)
-                case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
-                    s.rotate(Rotation.CW)
-                case pygame.K_SPACE if event.type == pygame.KEYDOWN:
-                    s.drop()
-                case pygame.K_DOWN:
-                    s.soft_drop = True if event.type == pygame.KEYDOWN else False
-                    pass
-                case pygame.K_RIGHT:
-                    s.last_side_t = pygame.time.get_ticks()
-                    if event.type == pygame.KEYDOWN:
-                        s.right_pressed = True
-                        s.right_last = True
-                        s.move_side()
-                    else:
-                        s.right_pressed = False
-                case pygame.K_LEFT:
-                    s.last_side_t = pygame.time.get_ticks()
-                    if event.type == pygame.KEYDOWN:
-                        s.left_pressed = True
-                        s.right_last = False
-                        s.move_side()
-                    else:
-                        s.left_pressed = False
-
-
-def update(s):
-    if not s.game_over:
-        s.fall()
-        s.handle_DAS()
+        return border
 
 
 if __name__ == "__main__":
     pygame.init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
     clock = pygame.time.Clock()
-    dt = 0
     s = State()
+
+    def draw_frame():
+        screen.fill("gray20")
+        board = s.draw_board()
+        screen.blit(board, center_pos(screen, board))
+        pygame.display.flip()
+
     while s.running:
         keys = pygame.key.get_pressed()
         # TODO make these functions pure?
-        handle_input(s)
-        update(s)
-        draw_frame(s)
+        s.handle_input()
+        s.update()
+        draw_frame()
 
         # limits FPS to 60
-        # dt is delta time in seconds since last frame, used for framerate-
-        # independent physics.
-        dt = clock.tick(60) / 1000
+        clock.tick(60) / 1000
 
     pygame.quit()
