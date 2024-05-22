@@ -93,11 +93,15 @@ def rot_cw(m):
     return list(zip(*m))[::-1]
 
 
+def rot_ccw(m):
+    return list(zip(*m[::-1]))
+
+
 shapes = {}  # (shape_name, rot) -> set(Square)
 for sn, sh in shapes_m.items():
     for rot in range(4):
         shapes[(sn, rot)] = set(Coord(x, y) for (x, y) in matrix_to_set(sh))
-        sh = rot_cw(sh)
+        sh = rot_ccw(sh)
 
 
 # position = top-left corner
@@ -252,6 +256,18 @@ class State:
         if self.block_overlapping():
             self.blck.rotate_ccw()
 
+    def rotate_ccw(self):
+        self.blck.rotate_ccw()
+        if self.block_overlapping():
+            self.blck.rotate_cw()
+
+    def rotate_180(self):
+        self.blck.rotate_ccw()
+        self.blck.rotate_ccw()
+        if self.block_overlapping():
+            self.blck.rotate_cw()
+            self.blck.rotate_cw()
+
 
 def draw_board(s):
     board = pygame.Surface((BOARD_W, BOARD_H))
@@ -288,7 +304,9 @@ def handle_input(s):
             s.running = False
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             match event.key:
-                case pygame.K_y if event.type == pygame.KEYDOWN:
+                case pygame.K_a if event.type == pygame.KEYDOWN:
+                    s.rotate_180()
+                case pygame.K_z if event.type == pygame.KEYDOWN:
                     s.rotate_ccw()
                 case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
                     s.rotate_cw()
