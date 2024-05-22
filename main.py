@@ -13,8 +13,8 @@ BOARD_W = BOARD_X * SQW  # width in pixels
 BOARD_H = BOARD_Y * SQW
 BOARD_H_BUF = BOARD_Y_BUF * SQW
 
-FALL_SPEED = 400  # ms until the block falls one level
-SOFT_DROP_SPEED = 40  # drop speed while holding "down"
+FALL_SPEED = 750  # ms until the block falls one level
+SOFT_DROP_SPEED = 50  # drop speed while holding "down"
 DAS = 200  # delay before auto-shift kicks in
 ARR = 1 / 20  # ms for each auto-shift
 LOCK_DELAY = 500  # ms of no successful movement/rotation before block gets locked
