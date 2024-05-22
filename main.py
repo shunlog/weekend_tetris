@@ -5,19 +5,22 @@ import random
 import enum
 from icecream import ic
 
-SQW = 20
-BOARD_X = 10
+SQW = 25
 BOARD_Y_BUF = 4  # top rows are a hidden "buffer"
+BOARD_X = 10
 BOARD_Y = 20 + BOARD_Y_BUF
 BOARD_W = BOARD_X * SQW
 BOARD_H = BOARD_Y * SQW
-GRID_COLOR = pygame.Color(50, 50, 50)
+BOARD_H_BUF = BOARD_Y_BUF * SQW
+
+GRID_COLOR = "gray10"
 FALL_SPEED = 400  # ms
 SOFT_DROP_SPEED = 40  # ms
 MOVE_SPEED = 200
 DAS = 200  # delayed auto-shift (ms holding before start)
 ARR = 1 / 20  # Auto-repeat rate (ms)
 LOCK_DELAY = 500
+WINDOW_SIZE = (900, 720)
 
 
 def center_pos(s1, s2):
@@ -374,13 +377,16 @@ class State:
 
 def draw_board(s):
     board = pygame.Surface((BOARD_W, BOARD_H))
-    pygame.draw.rect(board, "gray", ((0, 0), (BOARD_W, BOARD_Y_BUF * SQW)))
-    for i in range(BOARD_X):
+    board.fill("black")
+    pygame.draw.rect(board, "gray3", ((0, 0), (BOARD_W, BOARD_Y_BUF * SQW)))
+
+    for i in range(1, BOARD_X):
         x = i * SQW
         pygame.draw.aaline(board, GRID_COLOR, (x, 0), (x, BOARD_H))
-    for j in range(BOARD_Y):
+    for j in range(1, BOARD_Y):
         y = j * SQW
         pygame.draw.aaline(board, GRID_COLOR, (0, y), (BOARD_W, y))
+    pygame.draw.aaline(board, "gray42", (0, BOARD_H_BUF), (BOARD_W, BOARD_H_BUF))
     for y, ln in enumerate(s.matrix):
         for x, col in enumerate(ln):
             if not col:
@@ -394,14 +400,19 @@ def draw_board(s):
         txt = font.render("Game over!", True, "white")
         board.blit(txt, center_pos(board, txt))
 
-    return board
+    w = 2
+    border = pygame.Surface((BOARD_W+w*2, BOARD_H+w*2))
+    border.fill("white")
+    border.blit(board, center_pos(border, board))
+
+    return border
 
 
 def draw_frame(s):
-    screen.fill("gray")
+    screen.fill("gray20")
 
     board = draw_board(s)
-    screen.blit(board, (100, 100))
+    screen.blit(board, center_pos(screen, board))
 
     pygame.display.flip()
 
@@ -449,7 +460,7 @@ def update(s):
 
 if __name__ == "__main__":
     pygame.init()
-    screen = pygame.display.set_mode((600, 720))
+    screen = pygame.display.set_mode(WINDOW_SIZE)
     clock = pygame.time.Clock()
     dt = 0
     s = State()
