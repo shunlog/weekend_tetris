@@ -20,6 +20,16 @@ ARR = 1 / 20  # Auto-repeat rate (ms)
 LOCK_DELAY = 500
 
 
+def center_pos(s1, s2):
+    """
+    Given two pygame.Surface, return a tuple of (x, y)
+    where you have to place s2 inside s1 such that it's centered.
+    Example:
+        s1.blit(s2, center_pos(s1, s2))
+    """
+    p = Coord(s1.get_size()) // 2 - Coord(s2.get_size()) // 2
+    return (p.x, p.y)
+
 
 class Coord:
     def __init__(self, x, y=None):
@@ -382,8 +392,7 @@ def draw_board(s):
     if s.game_over:
         font = pygame.font.Font(size=SQW*2)
         txt = font.render("Game over!", True, "white")
-        txt_pos = Coord(board.get_size()) // 2 - Coord(txt.get_size()) // 2
-        board.blit(txt, (txt_pos.x, txt_pos.y))
+        board.blit(txt, center_pos(board, txt))
 
     return board
 
