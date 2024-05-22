@@ -22,7 +22,10 @@ LOCK_DELAY = 500
 
 
 class Coord:
-    def __init__(self, x, y):
+    def __init__(self, x, y=None):
+        if y is None and len(x) == 2:
+            x, y = x
+        assert isinstance(x, int), isinstance(y, int)
         self.x = x
         self.y = y
 
@@ -34,6 +37,9 @@ class Coord:
 
     def __sub__(self, other):
         return Coord(self.x - other.x, self.y - other.y)
+
+    def __floordiv__(self, n):
+        return Coord(self.x // n, self.y // n)
 
 
 class Shape(enum.Enum):
@@ -206,6 +212,7 @@ class Block:
 class State:
     def __init__(self):
         self.running = True
+        self.game_over = False
 
         self.dropping = False
         self.prev_drop_t = 0
@@ -234,6 +241,9 @@ class State:
             return -1
         return 0
 
+    def pos_above_limit(self, p):
+        return p.y < BOARD_Y_BUF
+
     def pos_overlapping(self, p):
         if p.y < 0:
             return False
@@ -260,8 +270,9 @@ class State:
             self.matrix[pos.y][pos.x] = self.blck.col
 
         self.kill_completed_lines()
-
-        self.spawn_block()
+        self.check_game_over()
+        if not self.game_over:
+            self.spawn_block()
 
     def line_complete(self, y):
         return all(self.matrix[y])
@@ -273,6 +284,10 @@ class State:
             # del from bottom to top
             del self.matrix[y]
             self.matrix.insert(0, [None]*BOARD_X)
+
+    def check_game_over(self):
+        if any(self.pos_above_limit(pos) for pos in self.blck.pos_ls()):
+            self.game_over = True
 
     def fall(self):
         t = pygame.time.get_ticks()
@@ -364,6 +379,12 @@ def draw_board(s):
             draw_sq(board, pos, col)
     s.blck.draw_on(board)
 
+    if s.game_over:
+        font = pygame.font.Font(size=SQW*2)
+        txt = font.render("Game over!", True, "white")
+        txt_pos = Coord(board.get_size()) // 2 - Coord(txt.get_size()) // 2
+        board.blit(txt, (txt_pos.x, txt_pos.y))
+
     return board
 
 
@@ -412,8 +433,9 @@ def handle_input(s):
 
 
 def update(s):
-    s.fall()
-    s.handle_DAS()
+    if not s.game_over:
+        s.fall()
+        s.handle_DAS()
 
 
 if __name__ == "__main__":
