@@ -80,6 +80,17 @@ shapes_m = {
           (0, 0, 0, 0))
 }
 
+# position = top-left corner
+shape_spawn_pos = {
+    'L': Coord(3, 1),
+    'J': Coord(3, 1),
+    'T': Coord(3, 1),
+    'S': Coord(3, 1),
+    'Z': Coord(3, 1),
+    'SQ': Coord(4, 1),
+    'I': Coord(3, 1)
+}
+
 
 # Wall kick data from https://tetris.wiki/Super_Rotation_System
 wall_kick_LJSZ = {
@@ -128,17 +139,6 @@ for sn, sh in shapes_m.items():
         shapes[(sn, rot)] = set(Coord(x, y) for (x, y) in matrix_to_set(sh))
         sh = rot_ccw(sh)
 
-
-# position = top-left corner
-shape_spawn_pos = {
-    'L': Coord(3, 1),
-    'J': Coord(4, 1),
-    'T': Coord(4, 2),
-    'S': Coord(4, 1),
-    'Z': Coord(4, 1),
-    'SQ': Coord(4, 2),
-    'I': Coord(4, 0)
-}
 
 
 def draw_sq(sf, pos, col):
