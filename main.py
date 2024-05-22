@@ -159,7 +159,7 @@ class State:
         self.last_dir_r = False   # Check what direction was pressed last
         self.last_mov_t = 0  # Time when last dir key was pressed/released
         self.auto_rep = False
-        self.arr_prev_t = 0
+        self.DAS_prev_t = 0
 
         self.sqrs = []  # board matrix, value at (x, y) = pygame.Color
         for _ in range(BOARD_Y):
@@ -233,13 +233,13 @@ class State:
         if t - self.last_mov_t < DAS or self.direction() == 0:
             return
 
-        if self.arr_prev_t < self.last_mov_t:
-            self.arr_prev_t = self.last_mov_t + DAS - ARR
+        if self.DAS_prev_t < self.last_mov_t:
+            self.DAS_prev_t = self.last_mov_t + DAS - ARR
 
-        if t - self.arr_prev_t < ARR:
+        if t - self.DAS_prev_t < ARR:
             return
 
-        self.arr_prev_t += ARR
+        self.DAS_prev_t += ARR
         self.move_side()
 
     def move_side(self):
