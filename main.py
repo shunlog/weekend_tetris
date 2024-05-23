@@ -237,39 +237,47 @@ class State:
             self.fall()
             self.handle_DAS()
 
-    def handle_input(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
-                match event.key:
-                    case pygame.K_a if event.type == pygame.KEYDOWN:
-                        self.rotate(Rotation.DOUBLE)
-                    case pygame.K_z if event.type == pygame.KEYDOWN:
-                        self.rotate(Rotation.CCW)
-                    case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
-                        self.rotate(Rotation.CW)
-                    case pygame.K_SPACE if event.type == pygame.KEYDOWN:
-                        self.drop()
-                    case pygame.K_DOWN:
-                        self.soft_drop = True if event.type == pygame.KEYDOWN else False
-                        pass
-                    case pygame.K_RIGHT:
-                        self.last_side_t = pygame.time.get_ticks()
-                        if event.type == pygame.KEYDOWN:
-                            self.right_pressed = True
-                            self.right_last = True
-                            self.move_side()
-                        else:
-                            self.right_pressed = False
-                    case pygame.K_LEFT:
-                        self.last_side_t = pygame.time.get_ticks()
-                        if event.type == pygame.KEYDOWN:
-                            self.left_pressed = True
-                            self.right_last = False
-                            self.move_side()
-                        else:
-                            self.left_pressed = False
+    def handle_input(self, event):
+        if event.type == pygame.QUIT:
+            self.running = False
+        if self.game_over:
+            if event.type == pygame.KEYDOWN \
+               and event.key in (pygame.K_r, pygame.K_Enter):
+                self.restart()
+        else:
+            self.handle_movement_input(event)
+
+    def handle_movement_input(self, event):
+        if event.type not in (pygame.KEYDOWN, pygame.KEYUP):
+            return
+        match event.key:
+            case pygame.K_a if event.type == pygame.KEYDOWN:
+                self.rotate(Rotation.DOUBLE)
+            case pygame.K_z if event.type == pygame.KEYDOWN:
+                self.rotate(Rotation.CCW)
+            case pygame.K_UP | pygame.K_x if event.type == pygame.KEYDOWN:
+                self.rotate(Rotation.CW)
+            case pygame.K_SPACE if event.type == pygame.KEYDOWN:
+                self.drop()
+            case pygame.K_DOWN:
+                self.soft_drop = True if event.type == pygame.KEYDOWN else False
+                pass
+            case pygame.K_RIGHT:
+                self.last_side_t = pygame.time.get_ticks()
+                if event.type == pygame.KEYDOWN:
+                    self.right_pressed = True
+                    self.right_last = True
+                    self.move_side()
+                else:
+                    self.right_pressed = False
+            case pygame.K_LEFT:
+                self.last_side_t = pygame.time.get_ticks()
+                if event.type == pygame.KEYDOWN:
+                    self.left_pressed = True
+                    self.right_last = False
+                    self.move_side()
+                else:
+                    self.left_pressed = False
 
     def spawn_block(self):
         shape = random.choice(list(Shape))
@@ -453,7 +461,8 @@ if __name__ == "__main__":
     while s.running:
         keys = pygame.key.get_pressed()
         # TODO make these functions pure?
-        s.handle_input()
+        for event in pygame.event.get():
+            s.handle_input(event)
         s.update()
         draw_frame()
 
