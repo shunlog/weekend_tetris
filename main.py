@@ -213,7 +213,6 @@ class Block:
 
 class State:
     def __init__(self):
-        self.running = True
         self.game_over = False
 
         self.dropping = False
@@ -237,17 +236,15 @@ class State:
             self.fall()
             self.handle_DAS()
 
+    def restart(self):
+        self.__init__()
+
     def handle_input(self, event):
-        if event.type == pygame.QUIT:
-            self.running = False
         if self.game_over:
             if event.type == pygame.KEYDOWN \
-               and event.key in (pygame.K_r, pygame.K_Enter):
+               and event.key in (pygame.K_r, pygame.K_RETURN):
                 self.restart()
-        else:
-            self.handle_movement_input(event)
 
-    def handle_movement_input(self, event):
         if event.type not in (pygame.KEYDOWN, pygame.KEYUP):
             return
         match event.key:
@@ -438,6 +435,12 @@ class State:
             txt = font.render("Game over!", True, "white")
             board.blit(txt, center_pos(board, txt))
 
+            font2 = pygame.font.Font(size=SQW)
+            txt2 = font2.render('"Enter" to restart.', True, "white")
+            center = center_pos(board, txt2)
+            p = (center[0], center[1] + txt.get_size()[1])
+            board.blit(txt2, p)
+
         w = 2
         border = pygame.Surface((BOARD_W+w*2, BOARD_H+w*2))
         border.fill("white")
@@ -446,11 +449,19 @@ class State:
         return border
 
 
-if __name__ == "__main__":
+def main():
     pygame.init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
     clock = pygame.time.Clock()
     s = State()
+    running = True
+
+    def handle_input(event):
+        nonlocal running
+        if event.type == pygame.QUIT:
+            running = False
+        else:
+            s.handle_input(event)
 
     def draw_frame():
         screen.fill("gray20")
@@ -458,11 +469,11 @@ if __name__ == "__main__":
         screen.blit(board, center_pos(screen, board))
         pygame.display.flip()
 
-    while s.running:
+    while running:
         keys = pygame.key.get_pressed()
         # TODO make these functions pure?
         for event in pygame.event.get():
-            s.handle_input(event)
+            handle_input(event)
         s.update()
         draw_frame()
 
@@ -470,3 +481,7 @@ if __name__ == "__main__":
         clock.tick(60) / 1000
 
     pygame.quit()
+
+
+if __name__ == "__main__":
+    main()
